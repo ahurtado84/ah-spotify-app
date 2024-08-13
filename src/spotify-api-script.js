@@ -12,7 +12,7 @@ let urlObj = new URL(window.location.href);
 let redirectURI = urlObj.origin + urlObj.pathname;
 
 const params = new URLSearchParams(window.location.search);
-const code = params.get("code");
+const codeParam = params.get("code");
 const clientId = getClientID();
 const clientSecret = getClientSecret();
 
@@ -23,10 +23,18 @@ if (mode != 'dry-run'){
         throw new Error("Stopping execution");  // Finalize execution
     }
 
-    if (!code) {
+    const savedCode = sessionStorage.getItem('code');
+    if (!codeParam) {
         redirectToAuthCodeFlow(clientId);
     }
+    else {
+      sessionStorage.setItem('code', codeParam);
+      if (!savedCode) {
+        redirectToAuthCodeFlow(clientId);
+      }
+    }
 }
+
 
 function getClientID() {
 	const clientIdParam = params.get("clientId");
@@ -57,14 +65,21 @@ export async function getSpotifyAccessToken() {
         return 'dummyToken';  // Finalize execution
     }
     
-    const verifier = localStorage.getItem("verifier");
+    const accessCode = sessionStorage.getItem("code");
+    if (!accessCode) {
+      console.error("No available access code");
+      return;
+    }
 
     const params = new URLSearchParams();
     params.append("client_id", clientId);
     params.append("grant_type", "authorization_code");
-    params.append("code", code);
+    params.append("code", accessCode);
     params.append("redirect_uri", redirectURI);
     params.append("client_secret", clientSecret);
+
+    // ensure that code is only used ONCE
+    sessionStorage.removeItem("code");
 
     try {
         const response = await fetch("https://accounts.spotify.com/api/token", {
@@ -211,10 +226,8 @@ export async function fetchTrackStream(trackId){
 }
 
 async function redirectToAuthCodeFlow(clientId) {
-    const verifier = generateCodeVerifier(128);
-    const challenge = await generateCodeChallenge(verifier);
-
-    localStorage.setItem("verifier", verifier);
+    // const verifier = generateCodeVerifier(128);
+    // const challenge = await generateCodeChallenge(verifier);
 
     const params = new URLSearchParams();
     params.append("client_id", clientId);
