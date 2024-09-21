@@ -1,9 +1,15 @@
+// To use this module:
+// <script src="src/spotify-api-script.js" type="module"></script>
+// import { getSpotifyAccessToken, fetchSpotifyProfile, fetchSpotifyPlaylists, fetchSpotifyPlaylistTracks } from './src/spotify-api-script.js';
+//
+// To-do list:
+//
 // Done, limits in API calls!
 // Done, limit what I get in tracks specially &fields=items(track(!available_markets,album(!available_markets)))
 // To do, there is a preview video, to use video_thumbnail
 // Done, start caching stuff
 
-const mode = "prod"
+const mode = "prod"  // dry-run or prod
 
 const scope = "user-read-private playlist-read-private user-read-email";
 
@@ -146,6 +152,22 @@ export async function fetchSpotifyPlaylistTracks(token, playlistId) {
   return fetchSpotifyList(token, playlistId, endpoint, 'tracks');
 }
 
+export async function fetchTrack(inputURL){
+      // Define the payload with the URL parameter
+      const payload = {
+        url: inputURL 
+    };
+    const response = await fetch('http://127.0.0.1:5000/get_audio', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+    });
+    let audioBlob  = await response.blob();
+    return audioBlob;
+}
+
 async function fetchSpotifyList(token, id, endpoint, object_type){
   // Retrieving cached data
   const cachedData = sessionStorage.getItem(id);
@@ -185,43 +207,39 @@ async function fetchSpotifyList(token, id, endpoint, object_type){
   }  
 }
 
-export async function fetchTrackStream(trackId){
-  //if (mode=='dry-run'){
-  //    return sampleStream;  // Finalize execution
-  //}
-
-  const endpoint = `https://api.spotifydown.com/download/${trackId}`;
-  try {
-      const response = await fetch(endpoint, {
-        method: 'GET',
-        headers: {
-            'Access-Control-Allow-Origin': '*',
-            'Accept': 'application/json',
-            'Accept-Language': getRandomFromList(ACCEPT_LANGUAGE_LIST),
-            'Origin': 'https://spotifydown.com',
-            'Referer': 'https://spotifydown.com/',
-            'User-Agent': getRandomFromList(USER_AGENT_LIST),
-            'Cache-Control': 'no-cache',
-            'Pragma': 'no-cache',
-            'Sec-Ch-Ua': '"' + getRandomFromList(BROWSER_LIST) + '";v="' + 
-              getRandomInt(80, 99).toString() + '", "Chromium";v="' + getRandomInt(80, 99).toString() + '", "Not?A_Brand";v="' + getRandomInt(20, 30).toString() + '"',
-            'Sec-Ch-Ua-Mobile': '?' + getRandomInt(0, 1).toString(),
-            'Sec-Ch-Ua-Platform': getRandomFromList(PLATFORM_LIST),         
-        }
-      });
-      if (!response.ok) {
-        throw new Error(`Error fetching Track Stream for ${trackId}: ${response.statusText}`);
-      }
-      const data = await response.json();
-      if (data) {
-          return data;
-      } else {
-          console.error(`Error fetching Spotify ${object_type}, data has no items`);
-      }
-  } catch (error) {
-        console.error('Error fetching Track stream ',trackId, error);
-    return null;   
+export async function searchSpotify(token, searchCriteria) {
+  if (mode=='dry-run'){
+    return sampleTracks;  // Finalize execution
   }
+
+  var endpoint = `https://api.spotify.com/v1/search?query=${encodeURIComponent(searchCriteria)}&type=track&limit=50`;
+  var items = [];
+  try {
+    // In this case I'm not calling next as results could be thousands, take the first 50 only
+      const response = await fetch(endpoint, {
+          method: 'GET',
+          headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+          }
+      });
+
+      if (!response.ok) {
+          throw new Error(`Error fetching ${object_type}: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      if ('tracks' in data) {
+          items = items.concat(data.tracks.items);
+      } else {
+          console.error(`Error fetching Spotify ${object_type}, data has no tracks`);
+      }
+
+  return items;
+  } catch (error) {
+      console.error('Error fetching Spotify ',object_type, error);
+      return null;
+  }  
 
 }
 
@@ -269,7 +287,7 @@ function generateRandomString(length) {
     return text;
 }
 
-function getRandomFromList (list) {
+function getRandomFromList(list) {
   return list[Math.floor((Math.random()*list.length))];
 }
 
@@ -278,41 +296,6 @@ function getRandomInt(min, max) {
   const maxFloored = Math.floor(max);
   return Math.floor(Math.random() * (maxFloored - minCeiled) + minCeiled); // The maximum is exclusive and the minimum is inclusive
 }
-
-// Constants
-
-const ACCEPT_LANGUAGE_LIST = ["de",
-  "de-CH",
-  "en-US,en;q=0.5",
-  "es-ES,es;q=0.9,en;q=0.8",
-  "en-US,fr-CA",
-  "fr-CH, fr;q=0.9, en;q=0.8, de;q=0.7, *;q=0",
-  "da, en-gb;q=0.8, en;q=0.7"]
-
-const USER_AGENT_LIST = [
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.82 Safari/537.36",
-    "Mozilla/5.0 (iPhone; U; CPU iPhone OS 3_1_2 like Mac OS X; en-us) AppleWebKit/528.18 (KHTML, like Gecko) Version/4.0 Mobile/7D11 Safari/528.16",
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_5) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.1.1 Safari/605.1.15",
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:77.0) Gecko/20100101 Firefox/77.0",
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/83.0.4103.97 Safari/537.36",
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:77.0) Gecko/20100101 Firefox/77.0",
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/83.0.4103.97 Safari/537.36",
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/77.0.3865.90 Safari/537.36",
-    "Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:47.0) Gecko/20100101 Firefox/47.3",
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X x.y; rv:42.0) Gecko/20100101 Firefox/43.4",
-    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/77.0.3865.90 Safari/537.36",
-    "Mozilla/5.0 (iPhone; CPU iPhone OS 11_3_1 like Mac OS X) AppleWebKit/603.1.30 (KHTML, like Gecko) Version/10.0 Mobile/14E304 Safari/602.1",
-    "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.5993.65 Mobile Safari/537.36",
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36",
-    "Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:47.0) Gecko/20100101 Firefox/47.0",
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X x.y; rv:42.0) Gecko/20100101 Firefox/42.0",
-    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/51.0.2704.106 Safari/537.36 OPR/38.0.2220.41",
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36 Edg/91.0.864.59",
-    "Mozilla/5.0 (iPhone; CPU iPhone OS 13_5_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.1.1 Mobile/15E148 Safari/604.1"]
-
-const BROWSER_LIST = ["Google Chrome", "Microsoft Edge", "Opera"]
-
-const PLATFORM_LIST = ["Android", "Chrome OS", "Chromium OS", "iOS", "Linux", "macOS", "Windows"]
 
 // Sample Data
 
