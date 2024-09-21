@@ -29,7 +29,7 @@
 				width: 100%;
 				height: 200px;
 				background-color: black;
-				display: flex;
+				/*display: none; /* Hide by default */
 				justify-content: center;
 				align-items: center;
 				flex-direction: column;
@@ -39,9 +39,14 @@
 				width: 100%;
 				height: 100%;
 				object-fit: cover;
-				display: none; /* Hide by default */
+				/*display: none; /* Hide by default */
 			}
 	
+			/* Generic container object to put stuff inside */
+			.container {
+				margin-top: 60px; /* Add margin so that the content does not overlap the fixed search box */
+			}
+
 			.controls-bar {
 				display: flex;
 				justify-content: space-around;
@@ -59,8 +64,27 @@
 				border-radius: 20px;
 				cursor: pointer;
 			}
-	
-			.playlist-container, .track-container {
+
+			.play-button {
+				background-color: #1db954;
+				border: none;
+				color: white;
+				border-radius: 50%;
+				width: 30px;
+				height: 30px;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				cursor: pointer;
+				font-size: 18px;
+				transition: background-color 0.3s ease;
+			}
+
+			.play-button:hover {
+				background-color: #1ed760;
+			}
+
+			.playlist-container, .track-container, .search-container, .admin-container {
 				flex: 1;
 				overflow-y: auto;
 				padding: 20px;
@@ -72,7 +96,7 @@
 				gap: 15px;
 			}
 	
-			.playlist-item, .track-item {
+			.playlist-item, .track-item{
 				display: flex;
 				align-items: center;
 				background-color: #282828;
@@ -81,7 +105,7 @@
 				cursor: pointer;
 			}
 	
-			.playlist-item img, .track-item img {
+			.playlist-item img, .track-item img{
 				width: 50px;
 				height: 50px;
 				border-radius: 5px;
@@ -123,12 +147,36 @@
 				height: 24px;
 				margin-bottom: 5px;
 			}
-	
+
+			.menu-item:hover {
+				cursor: pointer;
+			}
+
+			#consoleOutput {
+				height: 300px;
+				border: 1px solid #000;
+				background-color: #f0f0f0;
+				overflow-y: scroll;
+				padding: 10px;
+				padding-right: 10px;
+				font-family: monospace;
+			}
+
 			/* Hide the track container by default */
 			.track-container {
 				display: none;
 			}
-	
+
+			/* Hide the search container by default */
+			.search-container {
+				display: none;
+			}
+
+			/* Hide the admin container by default */
+			.admin-container {
+				display: none;
+			}
+			
 			/* Hide the controls-bar by default */
 			.controls-bar {
 				display: none;
@@ -149,11 +197,52 @@
 					font-size: 12px;
 				}
 			}
-		</style>
-	</head> 
-    <body> 
+
+			/* Search Container Stuff */
+			.search-box {
+				position: fixed; /* Fix the search container to the top */
+				width: 100%;          /* Let it adapt to the page size */
+			}
+
+			.search-input {
+				width: 85%;
+				padding: 10px 40px 10px 15px;
+				border-radius: 50px;
+				border: none;
+				outline: none;
+				background-color: #2a2a2a;
+				color: #fff;
+				font-size: 16px;
+			}
+
+			.search-input::placeholder {
+				color: #b3b3b3;
+			}
+
+			.search-icon {
+				position: absolute;
+				top: 50%;
+				right: 15px;
+				transform: translateY(-50%);
+				width: 20px;
+				height: 20px;
+				color: #b3b3b3;
+			}
+
+			.search-icon svg {
+				width: 100%;
+				height: 100%;
+				fill: currentColor;
+			}
+
+			.search-container:hover .search-input {
+				background-color: #333;
+			}
+		</style> 
+	</head>  
+    <body>  
 		<div class="header">
-			<img src="https://storage.googleapis.com/pr-newsroom-wp/1/2023/05/Spotify_Primary_Logo_RGB_Black.png" alt="Logo" style="vertical-align: middle; margin-right: 10px; width: 50px; height: 50px;">
+			<img src="img/Spotify_Primary_Logo_RGB_Black.png" alt="Logo" style="vertical-align: middle; margin-right: 10px; width: 50px; height: 50px;">
 			<span>Spotify</span>
 			<div style="float: right; display: flex; align-items: center;">
 				<span style="margin-right: 10px; font-size: 14px;" id="user-name"></span>
@@ -168,8 +257,9 @@
 	
 		<!-- Controls Bar -->
 		<div class="controls-bar">
+			<div class="control-item" onclick="showPlaylists()">Back</div>
 			<div class="control-item" onclick="playAll()">Play All</div>
-			<div class="control-item" onclick="playRandom()">Random Order</div>
+			<div class="control-item" onclick="playRandom()">Random</div>
 		</div>
 	
 		<!-- Playlist Container -->
@@ -180,54 +270,93 @@
 	
 		<!-- Track Container -->
 		<div class="track-container">
-			<div class="header" id="backBtn" onclick="showLibrary()">Back</div>
+			<!--<div class="header" id="backBtn" onclick="showPlaylists()">Back</div>-->
 			<div class="track-list" id="track-list">
 				<!-- Tracks will be inserted here dynamically -->
+			</div> 
+		</div> 
+
+		<!-- Search Container -->
+		<div class="search-container">
+			<div class="search-box">
+				<input type="text" class="search-input" placeholder="Search..." id="search-text-input">
+				<div class="search-icon" id="search-icon">
+					<svg viewBox="0 0 24 24" fill="currentColor" class="spotify-search-icon">
+						<path d="M15.5 14h-.79l-.28-.27a6.518 6.518 0 001.48-5.34C14.67 5.16 12.22 3 9.25 3 6.28 3 3.83 5.16 3.83 8.39c0 3.23 2.45 5.39 5.42 5.39 1.24 0 2.39-.41 3.35-1.1l.27.27v.79l4.75 4.73 1.49-1.48-4.73-4.75zM9.25 12.5c-2.26 0-4.08-1.81-4.08-4.08 0-2.26 1.82-4.08 4.08-4.08s4.08 1.81 4.08 4.08c0 2.26-1.82 4.08-4.08 4.08z"></path>
+					</svg>
+				</div>	
+			</div>
+			<p></p>
+			<div class="container">	
+				<div class="track-list" id="search-track-list">
+			</div>	
+				<!-- Tracks will be inserted here dynamically -->
+			</div> 
+		</div>
+
+		<!-- Admin Container -->
+		<div class="admin-container">
+			<div class="admin" id="admin">
+				<div id="consoleOutput"></div>
 			</div>
 		</div>
-	
+
 		<div class="menu-bar">
-			<div class="menu-item">
+			<div class="menu-item" onclick="showPlaylists()">
+				<img src="https://via.placeholder.com/24" alt="Library">
+				<div>Playlists</div>
+			</div> 			
+			<!--<div class="menu-item">
 				<img src="https://via.placeholder.com/24" alt="Home">
 				<div>Home</div>
-			</div> 
-			<div class="menu-item">
+			</div>-->
+			<div class="menu-item" onclick="showSearch()">
 				<img src="https://via.placeholder.com/24" alt="Search">
 				<div>Search</div>
 			</div>
-			<div class="menu-item" onclick="showLibrary()">
+			<div class="menu-item" onclick="showAdmin()">
 				<img src="https://via.placeholder.com/24" alt="Library">
-				<div>Your Library</div>
-			</div> 
-		</div> 
+				<div>Admin</div>
+			</div>			
+		</div>   
    
 		<!--Order matters, loading first spotify as app-script depends on them -->
-		<script src="src/spotify-api-script.js" type="module"></script>
+		<script src="src/spotify-api.js" type="module"></script>
+		<script src="src/media-cache-database.js"></script>
 		<script type="module">
-			import { getSpotifyAccessToken, fetchSpotifyProfile, fetchSpotifyPlaylists, fetchSpotifyPlaylistTracks, fetchTrackStream } from './src/spotify-api-script.js';
- 
-			main();     
+			import { getSpotifyAccessToken, fetchSpotifyProfile, fetchSpotifyPlaylists, fetchSpotifyPlaylistTracks, fetchTrack, searchSpotify } from './src/spotify-api.js';
+			//import { openDatabase, cacheMedia, getCachedMedia } from './src/media-cache-database.js';
+
+        	// Add the event listener for the search
+			document.getElementById("search-icon").addEventListener("click", populateSearchResults());
+			document.getElementById("search-text-input").addEventListener("keydown", function(event) {
+				// Check if the key pressed is 'Enter'
+				if (event.key === 'Enter') {
+					// Call a function or perform an action
+					populateSearchResults();
+				}
+			});
+
+			const accessToken = await getSpotifyAccessToken();
+			main();
  
 			async function main() {
-				const accessToken = await getSpotifyAccessToken();
 			
 				const profile = await fetchSpotifyProfile(accessToken);
 				populateUI(profile);
-				// print(profile);
 
 				const playlists_obj = await fetchSpotifyPlaylists(accessToken, profile.id);
-				populatePlaylists(playlists_obj, accessToken);
-				// print(playlists);
+				populatePlaylists(playlists_obj);
 			}
 
-			function populatePlaylists(playlists_obj, accessToken){
+			function populatePlaylists(playlists_obj){
 				const playlistContainer = document.getElementById('playlist');
 				playlistContainer.innerHTML = '';
 				playlists_obj.forEach(playlist_obj => {
 					const playlistItem = document.createElement('div');
 					playlistItem.id = playlist_obj.id;
 					playlistItem.className = 'playlist-item';
-					playlistItem.onclick = () => populateTracks(playlist_obj.id, accessToken);
+					playlistItem.onclick = () => populateTracks(playlist_obj.id);
 
 					const img = document.createElement('img');
 					if ('images' in playlist_obj && playlist_obj.images.length > 0) {
@@ -254,63 +383,128 @@
 				});
 			}
 
-			async function populateTracks(playlistId, accessToken){
-			// Display that view
-			showTracks();
-
+			async function populateTracks(playlistId){
 			// Get the tracks
 			const tracks_array = await fetchSpotifyPlaylistTracks(accessToken, playlistId);
-			print(tracks_array);
+			// print(tracks_array);
 			// Add tracks based on the playlist selected
 			const trackListContainer = document.getElementById('track-list');
             trackListContainer.innerHTML = ''; // Clear previous tracks
+			trackListContainer.scrollTop = 0;  // Scroll to top
 			tracks_array.forEach((item, index) => {
 				const track_item = item.track;
+				createTrackItem(track_item, trackListContainer);
+				});
+
+				// Display that view
+				showTracks();	
+			}
+
+			async function populateSearchResults(){
+			const query = document.getElementById('search-text-input').value;
+			// Get the tracks
+			const tracks_array = await searchSpotify(accessToken, query);
+			// print(tracks_array);
+			// Add tracks based on the playlist selected
+			const trackListContainer = document.getElementById('search-track-list');
+            trackListContainer.innerHTML = ''; // Clear previous tracks
+			trackListContainer.scrollTop = 0;  // Scroll to top
+			tracks_array.forEach((track_item, index) => {
+				createTrackItem(track_item, trackListContainer);
+				});
+
+			}
+
+			function createTrackItem(track_item, trackListContainer){
 				const trackItem = document.createElement('div');
 				trackItem.className = 'track-item';
 				trackItem.id = track_item.id;
-				trackItem.onclick = () => playVideo(track_item);
+				trackItem.onclick = () => playPreview(track_item);
 
+				// add track image
 				const img = document.createElement('img');
-					if ('album' in track_item && 'images' in track_item.album && track_item.album.images.length > 0) {
-						img.src = track_item.album.images[track_item.album.images.length-1].url;
-					}
-					else {
-						img.src = "https://via.placeholder.com/50";
-					}
-					trackItem.appendChild(img);
+				let thumbnail = undefined;
+				if ('album' in track_item && 'images' in track_item.album && track_item.album.images.length > 0) {
+					thumbnail =  track_item.album.images[track_item.album.images.length-1].url;
+				}
+				else {
+					thumbnail =  "https://via.placeholder.com/50";
+				}
+				img.src = thumbnail;
+				trackItem.appendChild(img);
 
-					const details = document.createElement('div');
-					details.className = 'details';
-					const title = document.createElement('div');
-					title.className = 'title';	
-					title.textContent = track_item.name;				
-								
-					details.appendChild(title);
-					trackItem.appendChild(details);
+				// add track details
+				const details = document.createElement('div');
+				details.className = 'details';
+				const title = document.createElement('div');
+				title.className = 'title';	
+				title.textContent = track_item.name;				
+							
+				details.appendChild(title);
+				trackItem.appendChild(details);
 
-					trackListContainer.appendChild(trackItem);
+				// add play button
+				/*
+				const playButton = document.createElement('button');
+				playButton.className = 'play-button';
+				playButton.innerHTML = '▶';
+				playButton.onclick = () => playPreview(track_item);
+				trackItem.appendChild(playButton);
+				*/
 
-				});
+				trackListContainer.appendChild(trackItem);
+			}
+
+			async function playPreview(trackItem) {
+				const videoPlayer = document.getElementById('videoPlayer');
+				const audioURL = trackItem.preview_url;
+				if (audioURL != null) {
+					videoPlayer.pause();
+					videoPlayer.src = audioURL;
+					videoPlayer.style.display = 'block';
+					videoPlayer.play();
+				}
 			}
 
 			async function playVideo(trackItem) {
 				const videoPlayer = document.getElementById('videoPlayer');
-				let media_url = 'https://www.w3schools.com/html/mov_bbb.mp4';
-				try {
-					const trackStrem = await fetchTrackStream(trackItem.id);
-					if ('link' in trackStrem){
-						media_url = trackStrem.link;
-					} else {
-						media_url = trackItem.preview_url;
-					}
-				} catch (error) {
-					media_url = trackItem.preview_url;
-				}
 				
-				videoPlayer.src = media_url; // `https://www.w3schools.com/html/mov_bbb.mp4` Replace with your video source
+				let audioURL =  undefined;
+				try {
+					const db = await openDatabase();
+					let audioBlob  = await getCachedMedia(db, trackItem.id);
+
+					if (!audioBlob ) {
+						console.log('Audio not cached, fetching from network...');
+						audioBlob = await fetchTrack(trackItem.preview_url);
+						cacheMedia(db, trackItem.id, audioBlob);  
+						console.log('Fetched and cached media');
+					} else {
+						console.log('Loaded media from cache');
+					}
+
+					audioURL  = URL.createObjectURL(audioBlob);
+
+				} catch (error) {
+					console.error('Error loading video:', error);
+					audioURL = trackItem.preview_url;
+				}
+
+				videoPlayer.pause();
+				videoPlayer.src = audioURL;
+
+				// add thumbnail
+				let thumbnail = undefined;
+				if ('album' in trackItem && 'images' in trackItem.album && trackItem.album.images.length > 0) {
+					thumbnail =  trackItem.album.images[0].url;
+				}
+				else {
+					thumbnail =  "https://via.placeholder.com/50";
+				}
+				videoPlayer.setAttribute('poster',thumbnail);
+				videoPlayer.setAttribute('width',"360");
 				videoPlayer.style.display = 'block';
-				videoPlayer.play();
+        		videoPlayer.play();
 			}
 
 			function print(obj) {
@@ -327,28 +521,51 @@
 			}
 
 		</script>
-		<script>
-
-			function showLibrary() {
-				// Hide the track container and show the playlist container
+		<!-- UI Functions -->
+		<script> 
+			function showPlaylists() {
+				// Show Playlists
+				document.querySelector('.playlist-container').style.display = 'block';
+				// Hide Everything else
+				document.querySelector('.admin-container').style.display = 'none';
+				document.querySelector('.search-container').style.display = 'none';
 				document.querySelector('.track-container').style.display = 'none';
 				document.querySelector('.controls-bar').style.display = 'none';
-				document.querySelector('.playlist-container').style.display = 'block';
-
-				// Hide the video player
-				const videoPlayer = document.getElementById('videoPlayer');
-				// videoPlayer.pause();  // Stop the video when going back
-				videoPlayer.style.display = 'none';
+				// document.getElementById('videoPlayer').style.display = 'none';  // Hide the video player
 			}
 
 			function showTracks() {
-				// Hide the playlist container and show the track container
+				// Hide Everything else
+				document.querySelector('.admin-container').style.display = 'none';
 				document.querySelector('.playlist-container').style.display = 'none';
-                document.querySelector('.track-container').style.display = 'block';
+				document.querySelector('.search-container').style.display = 'none';
+
+				document.querySelector('.track-container').style.display = 'block';
 			    document.querySelector('.controls-bar').style.display = 'flex';	
-				
 				// Show the VideoPlayer again
 				document.getElementById('videoPlayer').style.display = 'block';
+			}
+
+			function showSearch() {
+				// Show Admin
+				document.querySelector('.search-container').style.display = 'block';
+				// Hide Everything else
+				document.querySelector('.playlist-container').style.display = 'none';
+				document.querySelector('.track-container').style.display = 'none';
+				document.querySelector('.admin-container').style.display = 'none';
+				document.querySelector('.controls-bar').style.display = 'none';
+				//document.getElementById('videoPlayer').style.display = 'none';  // Hide the video player				
+			}
+
+			function showAdmin() {
+				// Show Admin
+				document.querySelector('.admin-container').style.display = 'block';
+				// Hide Everything else
+				document.querySelector('.playlist-container').style.display = 'none';
+				document.querySelector('.search-container').style.display = 'none';
+				document.querySelector('.track-container').style.display = 'none';
+				document.querySelector('.controls-bar').style.display = 'none';
+				//document.getElementById('videoPlayer').style.display = 'none';  // Hide the video player				
 			}
 
 			function playAll() {
@@ -361,6 +578,25 @@
 				alert('Playing tracks in random order');
 			}
 
+			// Console stuff
+			// Get a reference to the div where console output will be shown
+			const consoleOutput = document.getElementById('consoleOutput');
+
+			// Override the console.log function
+			(function() {
+				const originalConsoleLog = console.log;
+				console.log = function(...args) {
+					// Call the original console.log function
+					originalConsoleLog.apply(console, args);
+
+					// Convert the arguments to a string and add them to the div
+					const message = args.join(' ') + '<br>';
+					consoleOutput.innerHTML += message;
+
+					// Scroll to the bottom of the div
+					consoleOutput.scrollTop = consoleOutput.scrollHeight;
+				};
+			})();
 		</script>
     </body>
 </html>
